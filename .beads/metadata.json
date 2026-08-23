@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "CarbonMiles",
+  "project_id": "2048bf36-618a-4c56-a843-bf1929920e26"
+}
