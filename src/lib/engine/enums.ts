@@ -77,6 +77,37 @@ export const BODY_TYPES_BY_CATEGORY: Record<
 export const LIFECYCLE_STATUSES = ["active", "discontinued", "upcoming"] as const;
 export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
 
+/** BS-VI phase 2 (April 2023 onward) is the dividing line for E20 readiness. */
+export const EMISSION_NORMS = [
+  "bs3",
+  "bs4",
+  "bs6_phase1",
+  "bs6_phase2",
+  "zero_emission",
+] as const;
+export type EmissionNorm = (typeof EMISSION_NORMS)[number];
+
+export const E20_VERDICTS = [
+  "e20_compliant",
+  "e20_tolerant",
+  "e10_only",
+  "not_applicable",
+  "unknown",
+] as const;
+export type E20Verdict = (typeof E20_VERDICTS)[number];
+
+/**
+ * Ordered least to most severe, and the order is load-bearing: guidance rows
+ * are selected by `minRiskLevel`, which is a threshold test rather than an
+ * equality one, so comparing two levels means comparing their positions here.
+ */
+export const RISK_LEVELS = ["none", "low", "moderate", "high"] as const;
+export type RiskLevel = (typeof RISK_LEVELS)[number];
+
+/** Ordered most to least trusted, matching the database enum. */
+export const CONFIDENCE_LEVELS = ["high", "medium", "low"] as const;
+export type ConfidenceLevel = (typeof CONFIDENCE_LEVELS)[number];
+
 /**
  * Station types, as `infra_density.type` records them. Note there is no `lpg`
  * member: LPG retail is not tracked, so LPG variants pass the network gate

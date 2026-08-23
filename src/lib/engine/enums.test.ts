@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   bodyType,
+  confidenceLevel,
+  e20Verdict,
+  emissionNorm,
   fuelType,
   lifecycleStatus,
+  riskLevel,
   stationType,
   vehicleCategory,
 } from "@/db/schema/enums";
@@ -11,9 +15,13 @@ import {
 import {
   BODY_TYPES,
   COMMERCIAL_BODY_TYPES,
+  CONFIDENCE_LEVELS,
+  E20_VERDICTS,
+  EMISSION_NORMS,
   FUEL_TYPES,
   LIFECYCLE_STATUSES,
   PASSENGER_BODY_TYPES,
+  RISK_LEVELS,
   STATION_TYPES,
   VEHICLE_CATEGORIES,
 } from "./enums";
@@ -45,6 +53,22 @@ describe("engine enums mirror the database enums", () => {
 
   it("station_type", () => {
     expect(STATION_TYPES).toEqual(stationType.enumValues);
+  });
+
+  it("emission_norm", () => {
+    expect(EMISSION_NORMS).toEqual(emissionNorm.enumValues);
+  });
+
+  it("e20_verdict", () => {
+    expect(E20_VERDICTS).toEqual(e20Verdict.enumValues);
+  });
+
+  it("risk_level", () => {
+    expect(RISK_LEVELS).toEqual(riskLevel.enumValues);
+  });
+
+  it("confidence_level", () => {
+    expect(CONFIDENCE_LEVELS).toEqual(confidenceLevel.enumValues);
   });
 
   it("compares order, not just membership — the tuples are the type", () => {
