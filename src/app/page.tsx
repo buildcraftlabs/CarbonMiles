@@ -176,7 +176,7 @@ export default function Home() {
           total={TOTAL}
           eyebrow="Start"
           title="Ask it the question you actually have."
-          lede="Both advisors run end-to-end. Sign in to keep a report or come back to your history."
+          lede="The deterministic engine is built and tested. The advisors are being wired onto it now."
         >
           <div className="mt-2 flex flex-col items-start gap-4">
             <Link
@@ -186,7 +186,7 @@ export default function Home() {
               Try now
             </Link>
             <p className="text-[0.8rem] text-zinc-500">
-              Installable as an app. Phone, tablet and desktop.
+              Built for phone, tablet and desktop.
             </p>
           </div>
 
