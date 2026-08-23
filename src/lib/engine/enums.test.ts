@@ -3,10 +3,20 @@ import { describe, expect, it } from "vitest";
 import {
   bodyType,
   fuelType,
+  lifecycleStatus,
+  stationType,
   vehicleCategory,
 } from "@/db/schema/enums";
 
-import { BODY_TYPES, FUEL_TYPES, VEHICLE_CATEGORIES } from "./enums";
+import {
+  BODY_TYPES,
+  COMMERCIAL_BODY_TYPES,
+  FUEL_TYPES,
+  LIFECYCLE_STATUSES,
+  PASSENGER_BODY_TYPES,
+  STATION_TYPES,
+  VEHICLE_CATEGORIES,
+} from "./enums";
 
 /**
  * The engine keeps its own copies of these literals so that `src/lib/engine/`
@@ -29,9 +39,39 @@ describe("engine enums mirror the database enums", () => {
     expect(BODY_TYPES).toEqual(bodyType.enumValues);
   });
 
+  it("lifecycle_status", () => {
+    expect(LIFECYCLE_STATUSES).toEqual(lifecycleStatus.enumValues);
+  });
+
+  it("station_type", () => {
+    expect(STATION_TYPES).toEqual(stationType.enumValues);
+  });
+
   it("compares order, not just membership — the tuples are the type", () => {
     expect(FUEL_TYPES.indexOf("electric")).toBe(
       fuelType.enumValues.indexOf("electric"),
     );
+  });
+});
+
+/**
+ * The passenger/commercial split of `body_type` is an engine-side judgement the
+ * database does not enforce — it lives in a schema comment. These assertions
+ * are what keep the judgement honest: a body type added to the database enum
+ * and not placed on one side of the split fails here, instead of quietly
+ * becoming a variant that stage 1 filters out of every result.
+ */
+describe("body type split by category", () => {
+  it("covers body_type exactly, in order", () => {
+    expect([...PASSENGER_BODY_TYPES, ...COMMERCIAL_BODY_TYPES]).toEqual(
+      bodyType.enumValues,
+    );
+  });
+
+  it("assigns each body type to exactly one side", () => {
+    const overlap = PASSENGER_BODY_TYPES.filter((b) =>
+      (COMMERCIAL_BODY_TYPES as readonly string[]).includes(b),
+    );
+    expect(overlap).toEqual([]);
   });
 });

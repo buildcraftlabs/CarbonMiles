@@ -25,7 +25,15 @@ export const FUEL_TYPES = [
 ] as const;
 export type FuelType = (typeof FUEL_TYPES)[number];
 
-export const BODY_TYPES = [
+/**
+ * `body_type` is written as two blocks in the schema, and the boundary is
+ * load-bearing rather than cosmetic: a private buyer is never shown a tipper,
+ * and a fleet buyer asking for payload is never shown a coupe. Declaring the
+ * two halves separately makes that split testable — `enums.test.ts` asserts
+ * their concatenation is exactly `body_type`, in order, so a new value added to
+ * the database enum must be consciously placed on one side or the other.
+ */
+export const PASSENGER_BODY_TYPES = [
   "hatchback",
   "sedan",
   "suv",
@@ -35,6 +43,10 @@ export const BODY_TYPES = [
   "motorcycle",
   "scooter",
   "three_wheeler_passenger",
+] as const;
+export type PassengerBodyType = (typeof PASSENGER_BODY_TYPES)[number];
+
+export const COMMERCIAL_BODY_TYPES = [
   "three_wheeler_cargo",
   "mini_truck",
   "lcv",
@@ -45,7 +57,40 @@ export const BODY_TYPES = [
   "bus",
   "tempo_traveller",
 ] as const;
+export type CommercialBodyType = (typeof COMMERCIAL_BODY_TYPES)[number];
+
+export const BODY_TYPES = [
+  ...PASSENGER_BODY_TYPES,
+  ...COMMERCIAL_BODY_TYPES,
+] as const;
 export type BodyType = (typeof BODY_TYPES)[number];
+
+/** Which body types a profile of each category may be shown. */
+export const BODY_TYPES_BY_CATEGORY: Record<
+  VehicleCategory,
+  readonly BodyType[]
+> = {
+  passenger: PASSENGER_BODY_TYPES,
+  commercial: COMMERCIAL_BODY_TYPES,
+};
+
+export const LIFECYCLE_STATUSES = ["active", "discontinued", "upcoming"] as const;
+export type LifecycleStatus = (typeof LIFECYCLE_STATUSES)[number];
+
+/**
+ * Station types, as `infra_density.type` records them. Note there is no `lpg`
+ * member: LPG retail is not tracked, so LPG variants pass the network gate
+ * untested rather than being excluded on absent evidence.
+ */
+export const STATION_TYPES = [
+  "petrol",
+  "diesel",
+  "cng",
+  "ev_ac",
+  "ev_dc",
+  "hydrogen",
+] as const;
+export type StationType = (typeof STATION_TYPES)[number];
 
 /**
  * Not a database enum — `electricity_tariffs.tariffKind` is a text column, and
