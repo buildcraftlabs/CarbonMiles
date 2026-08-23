@@ -180,7 +180,7 @@ export default function Home() {
         >
           <div className="mt-2 flex flex-col items-start gap-4">
             <Link
-              href="/login"
+              href="/demo"
               className="inline-flex h-12 items-center justify-center rounded-full bg-emerald-400 px-8 text-base font-semibold text-[#05100c] transition-colors hover:bg-emerald-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-300"
             >
               Try now
