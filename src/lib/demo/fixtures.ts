@@ -18,8 +18,9 @@
 import type { CandidateVariant, InfraSnapshot } from "@/lib/engine/candidate";
 import type { EmissionFactor } from "@/lib/engine/co2";
 import type { OnRoadFactors } from "@/lib/engine/on-road";
+import type { PipelineVehicle } from "@/lib/engine/pipeline";
 import type { RecommendationProfileInput } from "@/lib/engine/profile";
-import type { EconomicsTables, VariantEconomics } from "@/lib/engine/tco";
+import type { EconomicsTables } from "@/lib/engine/tco";
 
 /** Rupees-in-lakhs to paise. Money is paise everywhere past this line. */
 const lakhs = (n: number) => Math.round(n * 10_000_000);
@@ -27,26 +28,8 @@ const lakhs = (n: number) => Math.round(n * 10_000_000);
 const years = <T,>(n: number, f: (year: number) => T): T[] =>
   Array.from({ length: n }, (_, i) => f(i + 1));
 
-/**
- * One demo vehicle carries BOTH engine shapes.
- *
- * `CandidateVariant` (what stage 1 filters) and `VariantEconomics` (what the
- * TCO and CO2 calculations consume) are deliberately different types and
- * neither contains the other — `VariantEconomics` alone carries `segment`, the
- * real-world efficiency pair and the battery fields. Holding both on one object
- * keeps them from drifting apart.
- */
-export interface DemoVehicle {
-  variant: CandidateVariant;
-  /** The identity fields are projected from `variant` at call time. */
-  economics: Omit<
-    VariantEconomics,
-    "variantId" | "fuelType" | "category" | "exShowroomPaise"
-  >;
-  /** `null` is a real answer meaning "we do not know", never a zero. */
-  serviceCentreCount: number | null;
-  resaleLiquidityScore: number | null;
-}
+/** A demo vehicle is just a pipeline vehicle; the engine owns the shape. */
+export type DemoVehicle = PipelineVehicle;
 
 const mk = (
   v: Partial<CandidateVariant> &
