@@ -1,12 +1,21 @@
 {
-  "name": "app",
+  "name": "carbon-miles",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "db:validate": "tsx --env-file=.env.local scripts/validate-data.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
