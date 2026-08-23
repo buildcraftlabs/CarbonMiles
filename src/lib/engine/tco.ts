@@ -270,26 +270,58 @@ export function selectFinanceRate(
 }
 
 /**
+ * The rows that govern one variant's residual.
+ *
+ * Exported so the query layer can select from exactly the subset `computeTco`
+ * costed against, rather than re-deriving the filter and drifting from it.
+ * Generic over the row so a caller may carry fields the costing has no use for
+ * — `resale_curves.liquidityScore` — through selection unchanged.
+ */
+export function resaleCurveFor<T extends ResaleCurvePoint>(
+  rows: readonly T[],
+  variant: Pick<VariantEconomics, "segment" | "fuelType" | "category">,
+): T[] {
+  return rows.filter(
+    (p) =>
+      p.segment === variant.segment &&
+      p.fuelType === variant.fuelType &&
+      p.category === variant.category,
+  );
+}
+
+/** A residual, and the sampled curve row it is anchored to. The row is carried
+ * so that anything else read off the curve — the liquidity score, the source —
+ * comes from the same row that priced the residual, and cannot disagree with
+ * it. */
+export interface ResidualAt<T extends ResaleCurvePoint> {
+  row: T;
+  pct: number;
+  assumption?: string;
+}
+
+/**
  * Residual value as a share of ex-showroom at a given age.
  *
  * Curves are sampled per year, so an exact hit is the normal case. Past the
  * last sampled age the final point is carried forward — extrapolating a
  * depreciation curve invents value at exactly the point where the used market
- * is thinnest.
+ * is thinnest. Between two samples the value is interpolated, and the row
+ * returned is the one the interpolation departs from.
  */
-function residualPctAt(
-  curve: readonly ResaleCurvePoint[],
+export function residualAt<T extends ResaleCurvePoint>(
+  curve: readonly T[],
   ageYears: number,
-): { pct: number; assumption?: string } | null {
+): ResidualAt<T> | null {
   if (curve.length === 0) return null;
 
   const exact = curve.find((p) => p.ageYears === ageYears);
-  if (exact) return { pct: exact.residualPct };
+  if (exact) return { row: exact, pct: exact.residualPct };
 
   const sorted = [...curve].sort((a, b) => a.ageYears - b.ageYears);
   const oldest = sorted[sorted.length - 1];
   if (ageYears > oldest.ageYears) {
     return {
+      row: oldest,
       pct: oldest.residualPct,
       assumption: `Resale curves stop at ${oldest.ageYears} years; the ${oldest.ageYears}-year residual was held flat beyond that.`,
     };
@@ -298,11 +330,14 @@ function residualPctAt(
   const below = sorted.filter((p) => p.ageYears < ageYears).pop();
   const above = sorted.find((p) => p.ageYears > ageYears);
   if (below === undefined || above === undefined) {
-    return { pct: sorted[0].residualPct };
+    return { row: sorted[0], pct: sorted[0].residualPct };
   }
   const span = above.ageYears - below.ageYears;
   const t = (ageYears - below.ageYears) / span;
-  return { pct: below.residualPct + (above.residualPct - below.residualPct) * t };
+  return {
+    row: below,
+    pct: below.residualPct + (above.residualPct - below.residualPct) * t,
+  };
 }
 
 /**
@@ -452,13 +487,8 @@ export function computeTco(input: TcoInput): TcoResult {
   };
 
   // --- resale
-  const resaleCurve = tables.resale.filter(
-    (p) =>
-      p.segment === variant.segment &&
-      p.fuelType === variant.fuelType &&
-      p.category === variant.category,
-  );
-  const residualAtExit = residualPctAt(resaleCurve, ownershipYears);
+  const resaleCurve = resaleCurveFor(tables.resale, variant);
+  const residualAtExit = residualAt(resaleCurve, ownershipYears);
   if (residualAtExit === null) {
     return fail(
       variant.variantId,
@@ -477,7 +507,7 @@ export function computeTco(input: TcoInput): TcoResult {
    */
   const insuranceForYear = (year: number): number => {
     if (year === 1) return 0;
-    const residual = residualPctAt(resaleCurve, year - 1);
+    const residual = residualAt(resaleCurve, year - 1);
     if (residual === null) return 0;
     return Math.round(
       (variant.exShowroomPaise * (residual.pct / 100) * price.factors.insurancePct) /

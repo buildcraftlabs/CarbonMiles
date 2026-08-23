@@ -1,5 +1,5 @@
 import type { Database } from "../client";
-import type { SeedCounts } from "./diff";
+import type { ProvenanceCounts, SeedCounts } from "./diff";
 import type { SeedModule } from "./types";
 
 export type ModuleReport = {
@@ -91,14 +91,44 @@ export async function runSeed(
   }
 }
 
+/**
+ * Totals across the run. The `provenance` bucket appears only if at least one
+ * module reported one, so a `--only=states,cities` run keeps a clean total
+ * instead of claiming it examined provenance it never looked at.
+ */
 export function sumCounts(reports: readonly ModuleReport[]): SeedCounts {
-  return reports.reduce<SeedCounts>(
+  const totals = reports.reduce<SeedCounts>(
     (total, report) => ({
       inserted: total.inserted + report.counts.inserted,
       updated: total.updated + report.counts.updated,
       unchanged: total.unchanged + report.counts.unchanged,
     }),
     { inserted: 0, updated: 0, unchanged: 0 },
+  );
+
+  const withProvenance = reports.filter((report) => report.counts.provenance !== undefined);
+  if (withProvenance.length === 0) return totals;
+
+  return {
+    ...totals,
+    provenance: withProvenance.reduce<ProvenanceCounts>(
+      (total, report) => ({
+        recorded: total.recorded + (report.counts.provenance?.recorded ?? 0),
+        superseded: total.superseded + (report.counts.provenance?.superseded ?? 0),
+        unchanged: total.unchanged + (report.counts.provenance?.unchanged ?? 0),
+      }),
+      { recorded: 0, superseded: 0, unchanged: 0 },
+    ),
+  };
+}
+
+/** `prov +12 ~3 =40` — appended only where a module actually wrote provenance. */
+function formatProvenance(counts: ProvenanceCounts | undefined): string {
+  if (counts === undefined) return "";
+  return (
+    `  prov +${String(counts.recorded).padStart(4)} ` +
+    `~${String(counts.superseded).padStart(4)} ` +
+    `=${String(counts.unchanged).padStart(4)}`
   );
 }
 
@@ -109,8 +139,9 @@ export function formatReport(report: SeedReport): string {
       `  ${m.name.padEnd(18)} ` +
       `+${String(inserted).padStart(4)} ` +
       `~${String(updated).padStart(4)} ` +
-      `=${String(unchanged).padStart(4)}  ` +
-      `${m.durationMs}ms`
+      `=${String(unchanged).padStart(4)}` +
+      formatProvenance(m.counts.provenance) +
+      `  ${m.durationMs}ms`
     );
   });
 
@@ -119,7 +150,8 @@ export function formatReport(report: SeedReport): string {
     `  ${"TOTAL".padEnd(18)} ` +
       `+${String(inserted).padStart(4)} ` +
       `~${String(updated).padStart(4)} ` +
-      `=${String(unchanged).padStart(4)}`,
+      `=${String(unchanged).padStart(4)}` +
+      formatProvenance(report.totals.provenance),
   );
   if (report.dryRun) lines.push("\n  DRY RUN — transaction rolled back, nothing was written.");
   return lines.join("\n");

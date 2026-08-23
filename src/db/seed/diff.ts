@@ -11,10 +11,25 @@
  * fixtures without a live Postgres.
  */
 
+/**
+ * Provenance moves independently of the rows it describes: a variant whose
+ * columns are all unchanged can still have a fact re-verified against a better
+ * source, and that is a write worth reporting.
+ */
+export type ProvenanceCounts = {
+  /** New `fact_provenance` rows written. */
+  recorded: number;
+  /** Previously-current rows stamped `superseded_at`. */
+  superseded: number;
+  unchanged: number;
+};
+
 export type SeedCounts = {
   inserted: number;
   updated: number;
   unchanged: number;
+  /** Present only for provenance-aware modules. */
+  provenance?: ProvenanceCounts;
 };
 
 export type SeedPlan<TRow> = {
@@ -61,6 +76,11 @@ export function planSeed<TRow, TExisting>(
   return plan;
 }
 
+/**
+ * Row counts only. The `provenance` bucket is deliberately absent rather than
+ * zeroed: a geography module has no provenance to report, and an all-zero
+ * bucket would read as "checked, nothing to do".
+ */
 export function countsOf<TRow>(plan: SeedPlan<TRow>): SeedCounts {
   return {
     inserted: plan.toInsert.length,
