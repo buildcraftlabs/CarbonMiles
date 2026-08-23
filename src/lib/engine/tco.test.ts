@@ -128,8 +128,34 @@ const unwrap = (input: TcoInput): TcoBreakdown => {
 
 describe("blendedEfficiency", () => {
   it("weights city and highway by the stated split", () => {
-    // 20 kmpl city, 25 highway, 70% city -> 21.5
-    expect(blendedEfficiency(petrolVariant(), 70)?.value).toBeCloseTo(21.5, 6);
+    // 20 kmpl city, 25 highway, 70% city. Over 100 km that is 70/20 + 30/25 =
+    // 4.7 L, so 100/4.7 = 21.2766 kmpl — NOT the arithmetic 21.5.
+    expect(blendedEfficiency(petrolVariant(), 70)?.value).toBeCloseTo(
+      100 / (70 / 20 + 30 / 25),
+      6,
+    );
+  });
+
+  it("never flatters economy the way an arithmetic mean would", () => {
+    const harmonic = blendedEfficiency(petrolVariant(), 70)!.value;
+    const arithmetic = 20 * 0.7 + 25 * 0.3;
+    expect(harmonic).toBeLessThan(arithmetic);
+  });
+
+  it("agrees with either mean when the two figures are equal", () => {
+    const flat = petrolVariant({
+      realWorldEfficiencyCity: 18,
+      realWorldEfficiencyHighway: 18,
+    });
+    expect(blendedEfficiency(flat, 40)?.value).toBeCloseTo(18, 6);
+  });
+
+  it("reproduces the fuel actually burned over a mixed route", () => {
+    // The property the blend exists to have: distance / blended == litres.
+    const blended = blendedEfficiency(petrolVariant(), 70)!.value;
+    const litresFromBlend = 1_000 / blended;
+    const litresBySegment = 700 / 20 + 300 / 25;
+    expect(litresFromBlend).toBeCloseTo(litresBySegment, 9);
   });
 
   it("falls back to the one published figure, and says which", () => {
@@ -158,9 +184,10 @@ describe("computeTco, petrol baseline", () => {
   const tco = unwrap(inputOf());
 
   it("costs energy from the blended real-world figure", () => {
-    // 14,400 km/yr at 21.5 kmpl at ₹100/l = ₹66,976.74/yr.
-    expect(tco.yearly[0].energyPaise).toBe(6_697_674);
-    expect(tco.energyPaise).toBe(6_697_674 * 5);
+    // 20 kmpl city / 25 highway at 70% city blends harmonically to
+    // 100/4.7 = 21.2766 kmpl, so 14,400 km/yr burns 676.8 l — ₹67,680/yr.
+    expect(tco.yearly[0].energyPaise).toBe(6_768_000);
+    expect(tco.energyPaise).toBe(6_768_000 * 5);
   });
 
   it("charges the marginal rate for distance beyond the curve's reference", () => {
@@ -177,13 +204,13 @@ describe("computeTco, petrol baseline", () => {
 
   it("credits the residual and nets it off the total", () => {
     expect(tco.resaleNominalPaise).toBe(lakhs(5));
-    expect(tco.totalPaise).toBe(109_708_370);
+    expect(tco.totalPaise).toBe(110_060_000);
     expect(tco.acquisitionPaise).toBe(114_060_000);
   });
 
   it("reports cost per kilometre over the whole horizon", () => {
     expect(tco.totalKm).toBe(72_000);
-    expect(tco.costPaisePerKm).toBeCloseTo(109_708_370 / 72_000, 6);
+    expect(tco.costPaisePerKm).toBeCloseTo(110_060_000 / 72_000, 6);
   });
 
   it("charges no interest to a cash buyer", () => {

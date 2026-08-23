@@ -32,7 +32,16 @@ const profileInput: RecommendationProfileInput = {
 const profileOf = (over: Partial<RecommendationProfileInput> = {}) =>
   parseProfile({ ...profileInput, ...over } as RecommendationProfileInput);
 
-/** 20 kmpl city / 25 highway, blended to 21.5 at the profile's 70% city split. */
+/**
+ * The blends the calculators actually use, written as the arithmetic rather
+ * than as a decimal so the relationship stays visible: over 100 km, 70 of them
+ * at the city figure and 30 at the highway one. These are harmonic means —
+ * what blends linearly is fuel per km, not km per litre.
+ */
+const PETROL_BLEND = 100 / (70 / 20 + 30 / 25); // 21.2766 kmpl
+const EV_BLEND = 100 / (70 / 6 + 30 / 5); // 5.6604 km/kWh
+
+/** 20 kmpl city / 25 highway at the profile's 70% city split — see `PETROL_BLEND`. */
 const petrolVariant = (over: Partial<VariantEmissions> = {}): VariantEmissions => ({
   variantId: "v1",
   fuelType: "petrol",
@@ -206,15 +215,15 @@ describe("computeCo2, petrol baseline", () => {
   const co2 = unwrap(inputOf());
 
   it("divides the per-litre factor by the blended real-world efficiency", () => {
-    // 2,310 g/l at 21.5 kmpl.
-    expect(co2.gramsCo2ePerKm).toBeCloseTo(2310 / 21.5, 9);
-    expect(co2.effectiveEfficiency).toBeCloseTo(21.5, 9);
+    // 2,310 g/l at PETROL_BLEND kmpl.
+    expect(co2.gramsCo2ePerKm).toBeCloseTo(2310 / PETROL_BLEND, 9);
+    expect(co2.effectiveEfficiency).toBeCloseTo(PETROL_BLEND, 9);
   });
 
   it("multiplies out over the horizon, in whole grams CO2e", () => {
     expect(co2.totalKm).toBe(72_000);
-    expect(co2.annualGramsCo2e).toBe(1_547_163);
-    expect(co2.horizonGramsCo2e).toBe(7_735_814);
+    expect(co2.annualGramsCo2e).toBe(1_563_408);
+    expect(co2.horizonGramsCo2e).toBe(7_817_040);
     expect(Number.isInteger(co2.horizonGramsCo2e)).toBe(true);
   });
 
@@ -250,7 +259,7 @@ describe("computeCo2, petrol baseline", () => {
       }),
     );
 
-    expect(cng.gramsCo2ePerKm).toBeCloseTo(2160 / 21.5, 9);
+    expect(cng.gramsCo2ePerKm).toBeCloseTo(2160 / PETROL_BLEND, 9);
     expect(cng.factor.unit).toBe("kg");
   });
 });
@@ -293,7 +302,7 @@ describe("computeCo2, the state grid factor", () => {
     }),
   ];
 
-  /** 6 km/kWh city, 5 highway -> 5.7 at a 70% city split. */
+  /** 6 km/kWh city, 5 highway — see `EV_BLEND` for the 70% city split. */
   const ev = (over: Partial<VariantEmissions> = {}) =>
     petrolVariant({
       fuelType: "electric",
@@ -310,7 +319,7 @@ describe("computeCo2, the state grid factor", () => {
 
     expect(co2.factor.stateCode).toBe("MH");
     expect(co2.appliedGramsCo2ePerUnit).toBe(620);
-    expect(co2.gramsCo2ePerKm).toBeCloseTo(620 / 5.7, 9);
+    expect(co2.gramsCo2ePerKm).toBeCloseTo(620 / EV_BLEND, 9);
   });
 
   it("falls back to the national grid factor, and says the state is missing", () => {
@@ -323,7 +332,7 @@ describe("computeCo2, the state grid factor", () => {
     );
 
     expect(co2.factor.stateCode).toBeNull();
-    expect(co2.gramsCo2ePerKm).toBeCloseTo(710 / 5.7, 9);
+    expect(co2.gramsCo2ePerKm).toBeCloseTo(710 / EV_BLEND, 9);
     expect(co2.assumptions.join(" ")).toContain("No KA grid emission factor");
     expect(co2.assumptions.join(" ")).toContain("coal-heavy");
   });
@@ -374,17 +383,17 @@ describe("computeCo2, the E20 adjustment", () => {
   const blended = unwrap(inputOf({ blend: e20() }));
 
   it("applies the blend's efficiency penalty to the real-world figure", () => {
-    // 21.5 kmpl, less the 3% the compatibility record publishes.
-    expect(blended.effectiveEfficiency).toBeCloseTo(21.5 * 0.97, 9);
-    expect(blended.gramsCo2ePerKm).toBeCloseTo(1968 / (21.5 * 0.97), 9);
+    // PETROL_BLEND kmpl, less the 3% the compatibility record publishes.
+    expect(blended.effectiveEfficiency).toBeCloseTo(PETROL_BLEND * 0.97, 9);
+    expect(blended.gramsCo2ePerKm).toBeCloseTo(1968 / (PETROL_BLEND * 0.97), 9);
   });
 
   it("takes the penalty from the caller and never invents one", () => {
     const gentler = unwrap(inputOf({ blend: e20({ efficiencyPenaltyPct: 2 }) }));
     const harsher = unwrap(inputOf({ blend: e20({ efficiencyPenaltyPct: 6 }) }));
 
-    expect(gentler.effectiveEfficiency).toBeCloseTo(21.5 * 0.98, 9);
-    expect(harsher.effectiveEfficiency).toBeCloseTo(21.5 * 0.94, 9);
+    expect(gentler.effectiveEfficiency).toBeCloseTo(PETROL_BLEND * 0.98, 9);
+    expect(harsher.effectiveEfficiency).toBeCloseTo(PETROL_BLEND * 0.94, 9);
     expect(harsher.gramsCo2ePerKm).toBeGreaterThan(gentler.gramsCo2ePerKm);
   });
 
@@ -392,19 +401,19 @@ describe("computeCo2, the E20 adjustment", () => {
     const noPenalty = unwrap(inputOf({ blend: e20({ efficiencyPenaltyPct: 0 }) }));
 
     expect(noPenalty.appliedGramsCo2ePerUnit).toBe(blended.appliedGramsCo2ePerUnit);
-    expect(noPenalty.gramsCo2ePerKm).toBeCloseTo(1968 / 21.5, 9);
+    expect(noPenalty.gramsCo2ePerKm).toBeCloseTo(1968 / PETROL_BLEND, 9);
     expect(noPenalty.gramsCo2ePerKm).toBeLessThan(blended.gramsCo2ePerKm);
   });
 
   it("reports biogenic carbon beside the total, never inside it", () => {
-    expect(blended.biogenicGramsCo2PerKm).toBeCloseTo(302 / (21.5 * 0.97), 9);
+    expect(blended.biogenicGramsCo2PerKm).toBeCloseTo(302 / (PETROL_BLEND * 0.97), 9);
     // The counted figure is the fossil one alone.
-    expect(blended.gramsCo2ePerKm).toBeCloseTo(1968 / (21.5 * 0.97), 9);
+    expect(blended.gramsCo2ePerKm).toBeCloseTo(1968 / (PETROL_BLEND * 0.97), 9);
     expect(blended.gramsCo2ePerKm).toBeLessThan(
-      (1968 + 302) / (21.5 * 0.97),
+      (1968 + 302) / (PETROL_BLEND * 0.97),
     );
-    expect(blended.horizonGramsCo2e).toBe(6_794_342);
-    expect(blended.horizonBiogenicGramsCo2).toBe(1_042_628);
+    expect(blended.horizonGramsCo2e).toBe(6_865_682);
+    expect(blended.horizonBiogenicGramsCo2).toBe(1_053_575);
     expect(CO2_CONVENTIONS.countBiogenicCarbon).toBe(false);
   });
 
@@ -440,7 +449,7 @@ describe("computeCo2, the E20 adjustment", () => {
     const neat = unwrap(inputOf());
 
     expect(neat.blend).toBeNull();
-    expect(neat.gramsCo2ePerKm).toBeCloseTo(2310 / 21.5, 9);
+    expect(neat.gramsCo2ePerKm).toBeCloseTo(2310 / PETROL_BLEND, 9);
     expect(neat.assumptions.join(" ")).toContain("No ethanol blend was supplied");
     expect(neat.assumptions.join(" ")).toContain("every litre is counted as fossil petrol");
   });

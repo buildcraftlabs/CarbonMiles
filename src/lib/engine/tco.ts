@@ -188,6 +188,15 @@ const fail = (
  * rival variants, so the split matters more than it looks. Where only one is
  * published we use it for the whole distance rather than discarding the
  * variant, and say so.
+ *
+ * **Harmonic, not arithmetic.** The figures are km *per litre* — a rate whose
+ * denominator is the thing being summed — so what blends linearly is fuel per
+ * km, not km per litre. Over 100 km at 20% city, a 12/18 kmpl car burns
+ * 20/12 + 80/18 = 6.11 L, which is 16.36 kmpl; averaging the two rates
+ * arithmetically would claim 16.8. The arithmetic mean is never smaller than
+ * the harmonic one, so that form always flatters economy, and it flatters it
+ * most for the variants with the widest city/highway spread — which means the
+ * error does not cancel out across a candidate set, it reorders it.
  */
 export function blendedEfficiency(
   variant: VariantEconomics,
@@ -198,7 +207,7 @@ export function blendedEfficiency(
 
   if (city !== null && hw !== null) {
     const share = citySharePct / 100;
-    return { value: city * share + hw * (1 - share) };
+    return { value: 1 / (share / city + (1 - share) / hw) };
   }
   if (city !== null) {
     return {
