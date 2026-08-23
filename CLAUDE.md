@@ -76,6 +76,9 @@ pnpm db:generate               # drizzle-kit generate (after editing src/db/sche
 pnpm db:migrate                # apply migrations (needs DATABASE_URL)
 pnpm db:studio                 # drizzle-kit studio
 pnpm db:seed                   # seed the catalogue and reference tables
+pnpm db:seed --dry-run         # report the delta, roll back, write nothing
+pnpm db:seed --only=states     # run a subset; --list shows the registry
+pnpm db:verify                 # post-migration sanity check against the live DB
 pnpm db:validate               # data quality + coverage report
 ```
 
@@ -138,6 +141,12 @@ already-rendered deterministic result.
   prepended to `drizzle/0000_init.sql`. Re-check after regenerating a baseline migration.
 - **RAG is confined to `e20_kb_chunks`.** Vehicle specifications must come from the catalogue
   tables, never from retrieval.
+- **Seeding is a diff, not a truncate-and-load.** Modules in `src/db/seed/modules/` read what is
+  already there, apply only the delta, and never delete rows the seed no longer mentions. The
+  whole run shares one transaction, so a failure leaves nothing half-written.
+- **No `export *` in files under `src/` that an `.mts` script imports.** The package has no
+  `"type": "module"`, so those files transpile to CommonJS and a star re-export becomes a runtime
+  call Node's ESM lexer cannot see — the names silently vanish at the import site.
 - **This is Next.js 16.** `AGENTS.md` carries a framework-authored block instructing you to read
   `node_modules/next/dist/docs/` before writing framework code — its APIs and conventions differ
   from older training data. Do that rather than working from memory.

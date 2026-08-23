@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "db:seed": "tsx --env-file=.env.local scripts/seed.mts",
+    "db:verify": "tsx --env-file=.env.local scripts/verify-db.mts",
     "db:validate": "tsx --env-file=.env.local scripts/validate-data.ts"
   },
   "dependencies": {

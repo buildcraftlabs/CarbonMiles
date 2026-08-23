@@ -88,7 +88,12 @@ export const e20GuidanceRules = pgTable(
     priority: smallint().notNull().default(50),
     sourceId: uuid().references(() => sources.id, { onDelete: "restrict" }),
   },
-  (t) => [index("e20_guidance_lookup_idx").on(t.appliesToVerdict, t.minRiskLevel, t.priority)],
+  (t) => [
+    index("e20_guidance_lookup_idx").on(t.appliesToVerdict, t.minRiskLevel, t.priority),
+    /** The body-type narrowing is a jsonb containment test on every guidance
+     * lookup, so it belongs in an index rather than in a post-filter. */
+    index("e20_guidance_body_types_idx").using("gin", t.appliesToBodyTypes),
+  ],
 );
 
 /**
@@ -127,5 +132,7 @@ export const e20KbChunks = pgTable(
       sql`to_tsvector('english', coalesce(${t.title}, '') || ' ' || ${t.content})`,
     ),
     index("e20_kb_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+    /** Retrieval pre-filters by tag before fusing lexical and vector scores. */
+    index("e20_kb_tags_idx").using("gin", t.tags),
   ],
 );

@@ -40,7 +40,12 @@ export const manufacturers = pgTable(
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("manufacturers_slug_key").on(t.slug)],
+  (t) => [
+    uniqueIndex("manufacturers_slug_key").on(t.slug),
+    /** Journey B opens with "find the vehicle you own", typed by hand and
+     * misspelled often. Trigram search tolerates that; a btree does not. */
+    index("manufacturers_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
+  ],
 );
 
 export const vehicleModels = pgTable(
@@ -76,6 +81,12 @@ export const vehicleModels = pgTable(
     uniqueIndex("vehicle_models_slug_key").on(t.slug),
     index("vehicle_models_manufacturer_idx").on(t.manufacturerId),
     index("vehicle_models_category_body_idx").on(t.category, t.bodyType, t.segment),
+    index("vehicle_models_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
+    /** Containment lookups over the editorial arrays, e.g. "which models list
+     * this known problem". Without a GIN index every such query is a seq scan. */
+    index("vehicle_models_advantages_idx").using("gin", t.knownAdvantages),
+    index("vehicle_models_disadvantages_idx").using("gin", t.knownDisadvantages),
+    index("vehicle_models_common_problems_idx").using("gin", t.commonProblems),
   ],
 );
 
@@ -168,6 +179,12 @@ export const vehicleVariants = pgTable(
     index("vehicle_variants_payload_idx")
       .on(t.payloadKg)
       .where(sql`status = 'active' and payload_kg is not null`),
+    index("vehicle_variants_name_trgm_idx").using("gin", t.name.op("gin_trgm_ops")),
+    /** Price-only lookups: budget sliders and "cheapest in segment" queries
+     * that do not pin a fuel type, so the candidate index cannot serve them. */
+    index("vehicle_variants_price_idx")
+      .on(t.exShowroomPaise)
+      .where(sql`status = 'active' and ex_showroom_paise is not null`),
   ],
 );
 

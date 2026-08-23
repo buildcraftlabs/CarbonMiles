@@ -8,6 +8,13 @@
       "when": 1787467448410,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787468442193,
+      "tag": "0001_wandering_hannibal_king",
+      "breakpoints": true
     }
   ]
 }
