@@ -128,3 +128,71 @@
     @apply font-sans;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Presentation deck
+   --------------------------------------------------------------------------
+   The scroll container is the document itself, so the page is an ordinary
+   scrolling document before JavaScript hydrates and stays one if it never
+   does. Snapping is pure CSS; the client controller only adds keyboard
+   advancing and a progress read-out on top of it.
+   -------------------------------------------------------------------------- */
+
+html:has([data-deck]) {
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-top: 0;
+  background-color: #05100c;
+}
+
+[data-deck] > section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Sections are focused programmatically (tabindex="-1") when the deck
+   advances, so the caret ring would frame the whole viewport. They are not in
+   the tab order, so suppressing it costs no keyboard affordance. */
+[data-deck] > section:focus {
+  outline: none;
+}
+
+/* Safety valve. Mandatory snapping can strand content that does not fit
+   between two snap points, so wherever a fold is taller than the viewport,
+   snapping relaxes to proximity and the overflow stays reachable. The client
+   controller measures this and sets data-deck-fit; the media query is the
+   no-JavaScript approximation of the same rule. */
+html[data-deck-fit="overflow"] {
+  scroll-snap-type: y proximity;
+}
+
+html[data-deck-fit="overflow"] [data-deck] > section {
+  scroll-snap-stop: normal;
+}
+
+@media (max-height: 600px) {
+  html:not([data-deck-fit="fits"]):has([data-deck]) {
+    scroll-snap-type: y proximity;
+  }
+
+  html:not([data-deck-fit="fits"]) [data-deck] > section {
+    scroll-snap-stop: normal;
+  }
+}
+
+/* Reduced motion: no snapping, no smooth scroll — an ordinary long page. */
+@media (prefers-reduced-motion: reduce) {
+  html:has([data-deck]) {
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+
+  [data-deck] > section {
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+}
