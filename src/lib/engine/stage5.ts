@@ -384,7 +384,7 @@ export type Stage5Result =
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const refKey = (entityTable: string, entityId: string, field: string) =>
-  `${entityTable} ${entityId} ${field}`;
+  `${entityTable}\u0000${entityId}\u0000${field}`;
 
 const indexProvenance = (
   records: readonly ProvenanceRecord[],
@@ -1307,7 +1307,7 @@ function collectSources(cited: readonly ProvenanceRecord[]): CitedSource[] {
       bySource.set(record.sourceId, entry);
     }
 
-    const fingerprint = `${record.sourceId} ${refKey(record.entityTable, record.entityId, record.field)}`;
+    const fingerprint = `${record.sourceId}\u0000${refKey(record.entityTable, record.entityId, record.field)}`;
     if (seen.has(fingerprint)) continue;
     seen.add(fingerprint);
 
